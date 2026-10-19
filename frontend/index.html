@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schedulix — API Client</title>
+  <style>
+    :root { color-scheme: light; --border:#d7dce2; --muted:#596579; --bg:#f7f8fa; --ink:#17202c; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    header { background:#fff; border-bottom:1px solid var(--border); padding:18px 22px; }
+    header h1 { margin:0; font-size:21px; font-weight:650; }
+    header p { margin:3px 0 0; color:var(--muted); }
+    main { max-width:1180px; margin:20px auto; padding:0 16px 28px; display:grid; gap:14px; }
+    .panel { background:#fff; border:1px solid var(--border); border-radius:8px; padding:16px; min-width:0; }
+    h2 { font-size:15px; margin:0 0 12px; }
+    label { display:block; font-weight:600; margin-bottom:5px; }
+    input, select, textarea, button { font:inherit; }
+    input, select, textarea { width:100%; border:1px solid #bfc7d1; border-radius:5px; padding:9px 10px; background:#fff; color:var(--ink); }
+    textarea { min-height:255px; resize:vertical; font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; tab-size:2; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .endpoint-row { display:grid; grid-template-columns:130px 1fr; gap:10px; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    button { border:1px solid #bfc7d1; background:#fff; padding:8px 12px; border-radius:5px; cursor:pointer; }
+    button.primary { background:#17202c; color:#fff; border-color:#17202c; }
+    button:disabled { opacity:.55; cursor:wait; }
+    .hint { color:var(--muted); font-size:12px; margin:6px 0 0; }
+    .response-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px; justify-content:space-between; }
+    .meta { color:var(--muted); font-size:12px; }
+    pre { margin:12px 0 0; padding:12px; min-height:180px; max-height:520px; overflow:auto; background:#f5f6f8; border:1px solid #e0e4e9; border-radius:5px; white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .status { display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:20px; font-size:12px; }
+    .status.ok { color:#17663a; border-color:#9ac9aa; background:#f0faf3; }
+    .status.bad { color:#9d2525; border-color:#e3aaaa; background:#fff4f4; }
+    .presets { display:flex; flex-wrap:wrap; gap:7px; }
+    .presets button { font-size:12px; }
+    footer { text-align:center; color:var(--muted); font-size:12px; padding:0 16px 20px; }
+    @media (max-width:680px) { .row,.endpoint-row { grid-template-columns:1fr; } textarea { min-height:220px; } header { padding:15px 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Schedulix API Client</h1>
+    <p>Minimal interface for sending JSON requests to the FastAPI backend.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Backend connection</h2>
+      <div class="row">
+        <div>
+          <label for="baseUrl">Base URL</label>
+          <input id="baseUrl" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" />
+          <p class="hint">Change this when your backend is hosted elsewhere.</p>
+        </div>
+        <div>
+          <label for="preset">Quick endpoint</label>
+          <select id="preset">
+            <option value="health">GET /health</option>
+            <option value="faculty">GET /api/faculty</option>
+            <option value="rooms">GET /api/rooms</option>
+            <option value="requests">GET /api/scheduling-requests</option>
+            <option value="createRequest">POST /api/scheduling-requests</option>
+            <option value="priority">POST /api/timetable/generate?algorithm=PRIORITY</option>
+            <option value="sjf">POST /api/timetable/generate?algorithm=SJF</option>
+            <option value="savePriority">POST /api/timetable/save?algorithm=PRIORITY</option>
+            <option value="saveSjf">POST /api/timetable/save?algorithm=SJF</option>
+            <option value="timetable">GET /api/timetable</option>
+            <option value="custom">Custom endpoint</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="loadPreset">Load endpoint</button>
+        <button id="healthCheck">Test connection</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Request</h2>
+      <div class="endpoint-row">
+        <div>
+          <label for="method">HTTP method</label>
+          <select id="method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+        <div>
+          <label for="path">Endpoint path</label>
+          <input id="path" value="/health" spellcheck="false" />
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label for="body">JSON request body</label>
+        <textarea id="body" spellcheck="false">{
+  "subject": "Computer Networks",
+  "section": "CSE-B",
+  "faculty_id": 1,
+  "sessions_per_week": 3,
+  "slots_required": 1,
+  "priority": 1,
+  "required_capacity": 50
+}</textarea>
+        <p class="hint">GET requests do not send a body. Edit the JSON to match your data and API schema.</p>
+      </div>
+      <div class="actions">
+        <button class="primary" id="send">Send request</button>
+        <button id="format">Format JSON</button>
+        <button id="clearBody">Clear body</button>
+      </div>
+      <div style="margin-top:14px">
+        <label>Request presets</label>
+        <div class="presets">
+          <button data-preset="createRequest">Scheduling request JSON</button>
+          <button data-preset="priority">Generate Priority preview</button>
+          <button data-preset="sjf">Generate SJF preview</button>
+          <button data-preset="savePriority">Save Priority timetable</button>
+          <button data-preset="timetable">Get saved timetable</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="response-head">
+        <h2 style="margin:0">Response</h2>
+        <div>
+          <span id="status" class="status">Not sent</span>
+          <span id="duration" class="meta"></span>
+        </div>
+      </div>
+      <pre id="response" aria-live="polite">Response will appear here as raw JSON or text.</pre>
+      <div class="actions">
+        <button id="copyResponse">Copy response</button>
+        <button id="clearResponse">Clear response</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>Schedulix · Single-file frontend · HTML, CSS and JavaScript</footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const presets = {
+      health:       { method: "GET",  path: "/health", body: "" },
+      faculty:      { method: "GET",  path: "/api/faculty", body: "" },
+      rooms:        { method: "GET",  path: "/api/rooms", body: "" },
+      requests:     { method: "GET",  path: "/api/scheduling-requests", body: "" },
+      createRequest:{ method: "POST", path: "/api/scheduling-requests", body: {
+        subject: "Computer Networks", section: "CSE-B", faculty_id: 1,
+        sessions_per_week: 3, slots_required: 1, priority: 1, required_capacity: 50
+      }},
+      priority:     { method: "POST", path: "/api/timetable/generate?algorithm=PRIORITY", body: "" },
+      sjf:          { method: "POST", path: "/api/timetable/generate?algorithm=SJF", body: "" },
+      savePriority: { method: "POST", path: "/api/timetable/save?algorithm=PRIORITY", body: "" },
+      saveSjf:      { method: "POST", path: "/api/timetable/save?algorithm=SJF", body: "" },
+      timetable:    { method: "GET", path: "/api/timetable", body: "" },
+      custom:       { method: "GET", path: "/", body: "" }
+    };
+
+    function loadPreset(name) {
+      const item = presets[name] || presets.custom;
+      $("method").value = item.method;
+      $("path").value = item.path;
+      $("body").value = item.body ? JSON.stringify(item.body, null, 2) : "";
+      $("preset").value = name;
+    }
+
+    $("loadPreset").addEventListener("click", () => loadPreset($("preset").value));
+    document.querySelectorAll("[data-preset]").forEach(button => {
+      button.addEventListener("click", () => loadPreset(button.dataset.preset));
+    });
+
+    $("healthCheck").addEventListener("click", () => {
+      loadPreset("health");
+      sendRequest();
+    });
+
+    $("format").addEventListener("click", () => {
+      try {
+        if (!$("body").value.trim()) return;
+        $("body").value = JSON.stringify(JSON.parse($("body").value), null, 2);
+        showResponse("JSON formatted successfully.", null, null);
+      } catch (error) {
+        showResponse("Invalid JSON: " + error.message, null, null, true);
+      }
+    });
+
+    $("clearBody").addEventListener("click", () => $("body").value = "");
+    $("clearResponse").addEventListener("click", () => showResponse("Response cleared.", null, null));
+
+    $("copyResponse").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText($("response").textContent);
+        $("copyResponse").textContent = "Copied";
+        setTimeout(() => $("copyResponse").textContent = "Copy response", 1200);
+      } catch {
+        showResponse("Clipboard access was blocked by the browser. Select and copy the response text manually.", null, null, true);
+      }
+    });
+
+    function showResponse(text, statusCode, durationMs, isError = false) {
+      $("response").textContent = text;
+      const status = $("status");
+      status.className = "status";
+      if (statusCode !== null && statusCode !== undefined) {
+        status.textContent = "HTTP " + statusCode;
+        status.classList.add(statusCode >= 200 && statusCode < 400 ? "ok" : "bad");
+      } else {
+        status.textContent = isError ? "Error" : "Ready";
+        if (isError) status.classList.add("bad");
+      }
+      $("duration").textContent = durationMs == null ? "" : durationMs + " ms";
+    }
+
+    async function sendRequest() {
+      const button = $("send");
+      const method = $("method").value;
+      const path = $("path").value.trim();
+      const base = $("baseUrl").value.trim().replace(/\/+$/, "");
+
+      if (!base || !path) {
+        showResponse("Please enter both a backend base URL and endpoint path.", null, null, true);
+        return;
+      }
+      if (!/^https?:\/\//i.test(base)) {
+        showResponse("Base URL must start with http:// or https://", null, null, true);
+        return;
+      }
+      if (!path.startsWith("/")) {
+        showResponse("Endpoint path must start with /", null, null, true);
+        return;
+      }
+
+      const options = { method, headers: { "Accept": "application/json" } };
+      if (!["GET", "HEAD"].includes(method)) {
+        const raw = $("body").value.trim();
+        if (raw) {
+          try {
+            JSON.parse(raw);
+          } catch (error) {
+            showResponse("Invalid JSON body: " + error.message, null, null, true);
+            return;
+          }
+          options.headers["Content-Type"] = "application/json";
+          options.body = raw;
+        }
+      }
+
+      button.disabled = true;
+      button.textContent = "Sending...";
+      showResponse("Waiting for backend response...", null, null);
+      const started = performance.now();
+
+      try {
+        const response = await fetch(base + path, options);
+        const duration = Math.round(performance.now() - started);
+        const raw = await response.text();
+        let output = raw;
+        try {
+          output = JSON.stringify(JSON.parse(raw), null, 2);
+        } catch { /* Preserve non-JSON responses as plain text. */ }
+        showResponse(output || "(Empty response)", response.status, duration, !response.ok);
+      } catch (error) {
+        showResponse(
+          "Request failed: " + error.message +
+          "\n\nCheck that FastAPI is running, the base URL is correct, and CORS allows this page's origin. If you opened this file directly, try serving it from a local web server.",
+          null, Math.round(performance.now() - started), true
+        );
+      } finally {
+        button.disabled = false;
+        button.textContent = "Send request";
+      }
+    }
+
+    $("send").addEventListener("click", sendRequest);
+    $("preset").addEventListener("change", () => loadPreset($("preset").value));
+  </script>
+</body>
+</html>
